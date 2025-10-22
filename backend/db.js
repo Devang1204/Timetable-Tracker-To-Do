@@ -1,10 +1,5 @@
 // db.js
-
-import pkg from "pg";
-import dotenv from "dotenv";
-
-dotenv.config();
-const { Pool } = pkg;
+const { Pool } = require('pg');
 
 const pool = new Pool({
   user: process.env.DB_USER,
@@ -15,8 +10,7 @@ const pool = new Pool({
 });
 
 pool.connect()
-  .then(() => console.log("✅ Connected to PostgreSQL"))
-  .catch(err => console.error("❌ Database connection error:", err));
+  .then(() => console.log("✅ PostgreSQL connected successfully"))
+  .catch(err => console.error("❌ Database connection failed:", err));
 
-// This is the line that fixes the error
-export default pool;
+module.exports = pool;
