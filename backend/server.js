@@ -1,35 +1,45 @@
 // server.js
 require('dotenv').config();
-const express = require('express'); // Ensure this line appears only ONCE
+const express = require('express');
 const cors = require('cors');
 const { generateText } = require('./geminiService');
-require('./notificationService'); // Start the background notification checks
+require('./db'); // Connects to PostgreSQL
+require('./notificationService'); // Starts the cron job for notifications
 
 const app = express();
-app.use(express.json());
-app.use(cors());
 
-// --- Database pool is managed in db.js ---
+// --- Middleware ---
+app.use(cors()); // Enable Cross-Origin Resource Sharing
+
+// ✅ --- ADD THESE LINES TO INCREASE SIZE LIMITS ---
+// Increase limit for JSON payloads (e.g., up to 10MB)
+app.use(express.json({ limit: '10mb' })); 
+// Increase limit for URL-encoded payloads (often affects forms/uploads too)
+app.use(express.urlencoded({ limit: '10mb', extended: true })); 
+// --- END OF ADDED LINES ---
+
+// --- Modular routes ---
+const authRoutes = require('./routes/authRoutes');
+const timetableRoutes = require('./routes/timetableRoutes');
+const todoRoutes = require('./routes/todoRoutes');
+const facultyRoutes = require('./routes/facultyRoutes');
+const studentRoutes = require('./routes/studentRoutes');
+const taRoutes = require('./routes/taRoutes');
 
 // Base route
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
 });
 
-// Modular routes
-const authRoutes = require('./routes/authRoutes');
-const timetableRoutes = require('./routes/timetableRoutes');
-const todoRoutes = require('./routes/todoRoutes');
-const facultyRoutes = require('./routes/facultyRoutes');
-const studentRoutes = require('./routes/studentRoutes');
-
+// --- Use API Routes ---
 app.use('/api/auth', authRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/todos', todoRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/ta', taRoutes);
 
-// Gemini AI endpoint (generic summary)
+// Gemini AI endpoint (generic summary / "Get Motivation")
 app.post('/api/generate-summary', async (req, res) => {
   try {
     const { prompt } = req.body;
