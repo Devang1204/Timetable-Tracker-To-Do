@@ -16,6 +16,9 @@ export const config = {
   
   // Token expiry time (in milliseconds)
   tokenExpiryTime: 24 * 60 * 60 * 1000, // 24 hours
+
+  // VAPID Public Key for Push Notifications
+  vapidPublicKey: 'BMI3GvErjnQvTO9jEj_-LqiHfijBA9vML-0ROSQWRZaTVyS1_CLilFvjH0iRDjRkhg8Az2JxVmqHE6pMWSYeW8Y',
 };
 
 /**

@@ -20,16 +20,16 @@ Share these exact endpoint specifications with the frontend integration:
 - `POST /auth/verify` - Verify JWT token
 
 #### Student Timetable Endpoints
-- `GET /timetable/student` - Get all classes
-- `POST /timetable/student` - Add new class
-- `PUT /timetable/student/:id` - Update class
-- `DELETE /timetable/student/:id` - Delete class
+- `GET /api/timetable` - Get all classes for logged-in student
+- `POST /api/timetable` - Add new class
+- `PUT /api/timetable/:id` - Update class
+- `DELETE /api/timetable/:id` - Delete class
 
 #### Faculty Timetable Endpoints
-- `GET /timetable/faculty` - Get all classes
-- `POST /timetable/faculty` - Add new class
-- `PUT /timetable/faculty/:id` - Update class
-- `DELETE /timetable/faculty/:id` - Delete class
+- `GET /api/faculty/timetable` - Get all classes (Self + TAs)
+- `POST /api/faculty/timetable` - Add new class
+- `PUT /api/faculty/timetable/:id` - Update class
+- `DELETE /api/faculty/timetable/:id` - Delete class
 
 #### TA Schedule Endpoints
 - `GET /timetable/ta` - Get assigned schedule

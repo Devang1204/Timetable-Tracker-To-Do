@@ -5,12 +5,14 @@ import { AIFeatures } from './components/AIFeatures';
 import { Overview } from './components/Overview';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Button } from './components/ui/button';
-import { GraduationCap, LayoutDashboard, Calendar, ListTodo, Sparkles, LogOut } from 'lucide-react';
+import { GraduationCap, LayoutDashboard, Calendar, ListTodo, Sparkles, LogOut, Bell } from 'lucide-react';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 import * as timetableApi from './lib/timetable-api';
 import * as todoApi from './lib/todo-api';
 import { config } from './lib/config';
+import { getAuthToken } from './lib/auth';
 
 // Interface for Frontend State/Display
 export interface TimetableEntry {
@@ -242,8 +244,9 @@ export default function StudentDashboard({ onChangeRole, userName }: StudentDash
     try {
         // Prepare data for backend (task, due_date)
         const apiData = { task: todoData.description, due_date: todoData.dueDate };
-        const newTodoFromBackend = await todoApi.addTodo(apiData);
-        const formattedTodo = formatTodoEntry(newTodoFromBackend); // Use helper
+        // Cast to any because todoApi returns TodoItem (frontend type) but we get backend response
+        const newTodoFromBackend = await todoApi.addTodo(apiData as any);
+        const formattedTodo = formatTodoEntry(newTodoFromBackend as any); // Use helper
         setTodos([...todos, formattedTodo]);
         toast.success("Todo added successfully!");
       } catch (error) {
@@ -253,20 +256,41 @@ export default function StudentDashboard({ onChangeRole, userName }: StudentDash
    };
 
    const handleToggleTodo = async (id: number | string) => {
-    if (config.useMockData) { /* ... mock logic ... */ return; }
-    // TODO: Implement PUT /api/todos/:id in backend and call here
-    toast.info("Toggle functionality needs backend update route.");
-    // Example Logic:
-    // const todoToToggle = todos.find(t => t.id === id);
-    // if (!todoToToggle) return;
-    // try {
-    //   const updatedTodoFromBackend = await todoApi.updateTodo(Number(id), { completed: !todoToToggle.completed });
-    //   const formattedTodo = formatTodoEntry(updatedTodoFromBackend);
-    //   setTodos(todos.map(t => t.id === id ? formattedTodo : t));
-    //   toast.success("Todo status updated!");
-    // } catch (error) {
-    //   toast.error("Failed to update todo status.");
-    // }
+    if (config.useMockData) {
+       // Mock data toggle
+       setTodos(todos.map(t => 
+         t.id === id ? { ...t, completed: !t.completed } : t
+       ));
+       return; 
+    }
+
+    const todoToToggle = todos.find(t => t.id === id);
+    if (!todoToToggle) return;
+
+    try {
+      // Optimistic update
+      const updatedTodos = todos.map(t => 
+        t.id === id ? { ...t, completed: !t.completed } : t
+      );
+      setTodos(updatedTodos);
+
+      // API call
+      const updatedTodoFromBackend = await todoApi.updateTodo(Number(id), { 
+        completed: !todoToToggle.completed 
+      });
+      
+      // Re-sync with backend response to be safe
+      // Cast to any because the API return type definition in todo-api.ts is narrower than the actual backend response
+      const formattedTodo = formatTodoEntry(updatedTodoFromBackend as any);
+      setTodos(prev => prev.map(t => t.id === id ? formattedTodo : t));
+      
+      toast.success(formattedTodo.completed ? "Task completed!" : "Task marked as pending");
+    } catch (error) {
+      console.error("Failed to toggle todo:", error);
+      toast.error("Failed to update todo status.");
+      // Revert on error
+      setTodos(todos); 
+    }
    };
 
   const handleDeleteTodo = async (id: number | string) => {
@@ -278,6 +302,48 @@ export default function StudentDashboard({ onChangeRole, userName }: StudentDash
       } catch (error) {
         toast.error("Failed to delete todo.");
       }
+  };
+
+  const handleEnableNotifications = async () => {
+    if (!('serviceWorker' in navigator)) {
+        toast.error("Notifications not supported in this browser.");
+        return;
+    }
+
+    try {
+        const register = await navigator.serviceWorker.register('/sw.js');
+        
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            toast.error("Permission denied for notifications.");
+            return;
+        }
+
+        if (!config.vapidPublicKey) {
+             toast.error("VAPID Public Key not configured.");
+             return;
+        }
+
+        const subscription = await register.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(config.vapidPublicKey)
+        });
+
+        // Send to backend
+        await fetch(`${config.apiBaseUrl}/api/notifications/subscribe`, {
+            method: 'POST',
+            body: JSON.stringify(subscription),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
+        });
+
+        toast.success("Notifications enabled! You will be reminded 10 mins before class.");
+    } catch (error) {
+        console.error("Notification error:", error);
+        toast.error("Failed to enable notifications.");
+    }
   };
 
   // --- Render loading state ---
@@ -294,29 +360,44 @@ export default function StudentDashboard({ onChangeRole, userName }: StudentDash
 
   // --- Render the dashboard UI ---
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white/80 backdrop-blur-md border-b border-purple-200/50 sticky top-0 z-10 shadow-lg shadow-purple-100/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-600 rounded-lg p-2">
+              <motion.div 
+                className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-2.5 shadow-lg"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
                 <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+              </motion.div>
               <div>
-                <h1>Student Dashboard</h1>
-                <p className="text-gray-600 text-sm">Welcome back, {userName}!</p>
+                <h1 className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" style={{ fontFamily: "'Poppins', sans-serif" }}>Student Dashboard</h1>
+                <p className="text-purple-600 text-sm" style={{ fontFamily: "'Inter', sans-serif" }}>Welcome back, {userName}! ✨</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              {/* ============================================ */}
-              {/* ✅ --- Dynamic Date --- */}
-              {/* ============================================ */}
-              <span className="text-sm text-gray-600 hidden sm:inline">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </span>
-              {/* ============================================ */}
-              <Button variant="outline" size="sm" onClick={onChangeRole} className="gap-2"> <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Logout</span> </Button>
+              <span className="text-sm text-purple-600 hidden sm:inline" style={{ fontFamily: "'Inter', sans-serif" }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleEnableNotifications}
+                className="gap-2 border-purple-500 text-purple-600 hover:bg-purple-50 hover:border-purple-600 transition-all duration-300"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="hidden sm:inline">Enable Notifications</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onChangeRole}
+                className="gap-2 border-red-500 text-red-600 hover:bg-red-50 hover:border-red-600 transition-all duration-300"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -325,41 +406,134 @@ export default function StudentDashboard({ onChangeRole, userName }: StudentDash
       {/* Main Content with Tabs */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-             <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Overview</span></TabsTrigger>
-             <TabsTrigger value="timetable" className="gap-2"><Calendar className="w-4 h-4" /> <span className="hidden sm:inline">Weekly Timetable</span></TabsTrigger>
-             <TabsTrigger value="todos" className="gap-2"><ListTodo className="w-4 h-4" /> <span className="hidden sm:inline">To-Do List</span></TabsTrigger>
-             <TabsTrigger value="ai" className="gap-2"><Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">AI Assistant</span></TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-white/60 backdrop-blur-sm border border-purple-200/50 shadow-lg p-1.5">
+            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: 15 }} transition={{ type: "spring", stiffness: 400 }}>
+                <LayoutDashboard className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="timetable" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-400 data-[state=active]:to-cyan-400 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: -15 }} transition={{ type: "spring", stiffness: 400 }}>
+                <Calendar className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Weekly Timetable</span>
+            </TabsTrigger>
+            <TabsTrigger value="todos" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-400 data-[state=active]:to-emerald-400 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, y: -3 }} transition={{ type: "spring", stiffness: 400 }}>
+                <ListTodo className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">To-Do List</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-400 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Quicksand', sans-serif" }}>
+              <motion.div 
+                whileHover={{ scale: 1.2 }} 
+                animate={{ rotate: [0, 5, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">AI Assistant</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Render TabsContent using the state variables */}
           <TabsContent value="overview" className="mt-0">
-             <Overview timetable={timetable} todos={todos} />
-             {/* Removed handlers from Overview as it's mainly display */}
+            <Overview
+              timetable={timetable}
+              todos={todos}
+              onAddClass={handleAddClass}
+              onUpdateClass={handleUpdateClass}
+              onDeleteClass={handleDeleteClass}
+              onUploadTimetable={handleUploadTimetable}
+              onAddTodo={handleAddTodo}
+              onToggleTodo={handleToggleTodo}
+              onDeleteTodo={handleDeleteTodo}
+            />
           </TabsContent>
 
           <TabsContent value="timetable" className="mt-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-6"> <Calendar className="w-5 h-5 text-blue-600" /> <h2>Weekly Timetable</h2> </div>
-              <TimetableView timetable={timetable} onAddClass={handleAddClass} onUpdateClass={handleUpdateClass} onDeleteClass={handleDeleteClass} onUploadTimetable={handleUploadTimetable} />
+            <div className="bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50 rounded-xl shadow-lg border-2 border-cyan-200/50 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className="bg-gradient-to-br from-blue-400 to-cyan-500 p-2 rounded-lg shadow-md"
+                >
+                  <Calendar className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent" style={{ fontFamily: "'Raleway', sans-serif" }}>Weekly Timetable</h2>
+              </div>
+              <TimetableView
+                timetable={timetable}
+                onAddClass={handleAddClass}
+                onUpdateClass={handleUpdateClass}
+                onDeleteClass={handleDeleteClass}
+                onUploadTimetable={handleUploadTimetable}
+              />
             </div>
           </TabsContent>
 
           <TabsContent value="todos" className="mt-0">
-             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-               <div className="flex items-center gap-2 mb-6"> <ListTodo className="w-5 h-5 text-green-600" /> <h2>To-Do List</h2> </div>
-               <TodoList todos={todos} timetable={timetable} onAddTodo={handleAddTodo} onToggleTodo={handleToggleTodo} onDeleteTodo={handleDeleteTodo} />
-             </div>
+            <div className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-xl shadow-lg border-2 border-emerald-200/50 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ scale: 1.2, y: -5 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                  className="bg-gradient-to-br from-green-400 to-emerald-500 p-2 rounded-lg shadow-md"
+                >
+                  <ListTodo className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent" style={{ fontFamily: "'Raleway', sans-serif" }}>To-Do List</h2>
+              </div>
+              <TodoList
+                todos={todos}
+                timetable={timetable}
+                onAddTodo={handleAddTodo}
+                onToggleTodo={handleToggleTodo}
+                onDeleteTodo={handleDeleteTodo}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="ai" className="mt-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-               <div className="flex items-center gap-2 mb-6"> <Sparkles className="w-5 h-5 text-purple-600" /> <h2>AI Assistant</h2> </div>
-               <AIFeatures timetable={timetable} todos={todos} />
+            <div className="bg-gradient-to-br from-yellow-50 via-orange-50 to-amber-50 rounded-xl shadow-lg border-2 border-orange-200/50 p-6 backdrop-blur-sm">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 5, -5, 0],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 2, 
+                    ease: "easeInOut" 
+                  }}
+                  className="bg-gradient-to-br from-yellow-400 to-orange-500 p-2 rounded-lg shadow-md"
+                >
+                  <Sparkles className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" style={{ fontFamily: "'Raleway', sans-serif" }}>AI Assistant</h2>
+              </div>
+              <AIFeatures timetable={timetable} todos={todos} />
             </div>
           </TabsContent>
         </Tabs>
       </main>
     </div>
   );
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }

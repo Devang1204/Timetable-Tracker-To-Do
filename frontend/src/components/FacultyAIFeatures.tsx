@@ -6,14 +6,7 @@ export interface TA { id: number | string; name: string; email: string; role?: s
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 // Corrected icon imports based on your original file
-import { Sparkles, Calendar, TrendingUp, Zap, Loader2, BookOpen, Users, Brain } from 'lucide-react'; // Added Brain back
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
+import { Sparkles, Calendar, TrendingUp, Zap, Loader2, BookOpen, Users, Brain, X, Bot } from 'lucide-react'; // Added Brain back
 import { toast } from 'sonner';
 // ✅ --- Import the AI API functions ---
 import * as aiApi from '../lib/ai-api';
@@ -41,7 +34,6 @@ interface AIResponse {
 export function FacultyAIFeatures({ timetable, tas, facultyUserName }: FacultyAIFeaturesProps) { // Added facultyUserName
   // Use a single loading state
   const [loadingFeature, setLoadingFeature] = useState<string | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false); // For general AI responses (Analyze/Report)
   const [aiResponse, setAiResponse] = useState<AIResponse | null>(null);
   // ============================================
   // ✅ --- State for Generate Schedule Dialog ---
@@ -51,7 +43,6 @@ export function FacultyAIFeatures({ timetable, tas, facultyUserName }: FacultyAI
   // Helper to show AI response in dialog
   const showResponse = (title: string, content: string, suggestions: string[] = []) => {
       setAiResponse({ title, content, suggestions });
-      setDialogOpen(true);
   };
 
   // ============================================
@@ -116,12 +107,33 @@ export function FacultyAIFeatures({ timetable, tas, facultyUserName }: FacultyAI
     }
   };
 
-  // --- Suggest TA Assignments --- (Keep your existing API call logic/placeholder)
+  // --- Suggest TA Assignments ---
   const handleSuggestTAAssignments = async () => {
-    if (config.useMockData) { /* ... keep mock ... */ return; }
-    // Keep placeholder or implement API call
-    toast.info("Suggest TA Assignments feature needs backend implementation.");
-    // setLoadingFeature('assign'); try { ... } catch { ... } finally { ... }
+    if (config.useMockData) { 
+        setLoadingFeature('assign');
+        setTimeout(() => {
+            showResponse(
+                'TA Assignment Suggestions',
+                'Based on current workload, here are some suggested assignments to balance the load.',
+                ['Assign Class A to TA 1', 'Assign Class B to TA 2']
+            );
+            setLoadingFeature(null);
+            toast.success('Suggestions generated!');
+        }, 1000);
+        return; 
+    }
+    
+    setLoadingFeature('assign');
+    try {
+      const response = await aiApi.suggestTaAssignments();
+      showResponse('TA Assignment Suggestions', response.analysis, response.recommendations || []);
+      toast.success('Suggestions generated!');
+    } catch (error) {
+        console.error("Error getting TA suggestions:", error);
+        toast.error(`Failed to get suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+        setLoadingFeature(null);
+    }
   };
 
   // --- Generate Teaching Report --- (Keep your existing API call logic)
@@ -142,64 +154,115 @@ export function FacultyAIFeatures({ timetable, tas, facultyUserName }: FacultyAI
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Generate Optimal Schedule Button */}
-        <Button
-          // ============================================
-          // ✅ --- onClick opens the dialog ---
-          // ============================================
-          onClick={() => setGenerateDialogOpen(true)}
-          disabled={!!loadingFeature}
-          className="w-full justify-start gap-2 h-auto py-4"
-          variant="outline"
-        >
-          <div className="flex items-start gap-3 w-full">
-            {loadingFeature === 'schedule' ? <Loader2 className="w-5 h-5 animate-spin shrink-0 mt-0.5" /> : <Calendar className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />}
-            <div className="text-left">
-              <div className="font-medium">Generate Optimal Schedule</div>
-              <div className="text-xs text-gray-500 font-normal"> AI-powered schedule optimization </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full min-h-[500px]">
+      {/* Left Column: Actions */}
+      <div className="space-y-4 lg:col-span-1">
+        <Card className="p-5 shadow-md border-purple-100">
+          <h3 className="font-semibold mb-4 text-lg text-purple-900 flex items-center gap-2">
+            <Brain className="w-5 h-5 text-purple-600" />
+            AI Tools
+          </h3>
+          <div className="space-y-3">
+            {/* Generate Optimal Schedule Button */}
+            <Button
+              onClick={() => setGenerateDialogOpen(true)}
+              disabled={!!loadingFeature}
+              className="w-full justify-start gap-3 h-12 text-base"
+              variant="outline"
+            >
+              {loadingFeature === 'schedule' ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <Calendar className="w-5 h-5 text-blue-600" />}
+              Generate Optimal Schedule
+            </Button>
+
+            {/* Analyze Workload Button */}
+            <Button onClick={handleAnalyzeWorkload} disabled={!!loadingFeature} className="w-full justify-start gap-3 h-12 text-base" variant="outline">
+              {loadingFeature === 'workload' ? <Loader2 className="w-5 h-5 animate-spin text-green-600" /> : <TrendingUp className="w-5 h-5 text-green-600" />}
+              Analyze Workload
+            </Button>
+
+            {/* Suggest TA Assignments Button */}
+            <Button onClick={handleSuggestTAAssignments} disabled={!!loadingFeature} className="w-full justify-start gap-3 h-12 text-base" variant="outline">
+              {loadingFeature === 'assign' ? <Loader2 className="w-5 h-5 animate-spin text-purple-600" /> : <Zap className="w-5 h-5 text-purple-600" />}
+              Suggest TA Assignments
+            </Button>
+
+            {/* Generate Teaching Report Button */}
+            <Button onClick={handleGenerateReport} disabled={!!loadingFeature} className="w-full justify-start gap-3 h-12 text-base" variant="outline">
+              {loadingFeature === 'report' ? <Loader2 className="w-5 h-5 animate-spin text-orange-600" /> : <BookOpen className="w-5 h-5 text-orange-600" />}
+              Generate Teaching Report
+            </Button>
+          </div>
+        </Card>
+
+        {/* AI Powered Insights Card */}
+        <Card className="p-4 bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200 shadow-sm"> 
+          <div className="flex items-start gap-3"> 
+            <div className="bg-white p-2 rounded-full shadow-sm">
+              <Sparkles className="w-5 h-5 text-purple-600" /> 
             </div>
-          </div>
-        </Button>
-
-        {/* Analyze Workload Button */}
-        <Button onClick={handleAnalyzeWorkload} disabled={!!loadingFeature} className="w-full justify-start gap-2 h-auto py-4" variant="outline">
-          <div className="flex items-start gap-3 w-full">
-            {loadingFeature === 'workload' ? <Loader2 className="w-5 h-5 animate-spin shrink-0 mt-0.5" /> : <TrendingUp className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />}
-            <div className="text-left"> <div className="font-medium">Analyze Workload</div> <div className="text-xs text-gray-500 font-normal"> Review teaching load distribution </div> </div>
-          </div>
-        </Button>
-
-        {/* Suggest TA Assignments Button */}
-        <Button onClick={handleSuggestTAAssignments} disabled={!!loadingFeature} className="w-full justify-start gap-2 h-auto py-4" variant="outline">
-          <div className="flex items-start gap-3 w-full">
-            {loadingFeature === 'assign' ? <Loader2 className="w-5 h-5 animate-spin shrink-0 mt-0.5" /> : <Zap className="w-5 h-5 shrink-0 mt-0.5 text-purple-600" />}
-            <div className="text-left"> <div className="font-medium">Suggest TA Assignments</div> <div className="text-xs text-gray-500 font-normal"> Smart TA-to-class matching </div> </div>
-          </div>
-        </Button>
-
-        {/* Generate Teaching Report Button */}
-        <Button onClick={handleGenerateReport} disabled={!!loadingFeature} className="w-full justify-start gap-2 h-auto py-4" variant="outline">
-          <div className="flex items-start gap-3 w-full">
-            {loadingFeature === 'report' ? <Loader2 className="w-5 h-5 animate-spin shrink-0 mt-0.5" /> : <BookOpen className="w-5 h-5 shrink-0 mt-0.5 text-orange-600" />}
-            <div className="text-left"> <div className="font-medium">Generate Teaching Report</div> <div className="text-xs text-gray-500 font-normal"> Comprehensive weekly summary </div> </div>
-          </div>
-        </Button>
+            <div> 
+              <p className="text-sm text-purple-900 font-medium leading-relaxed"> 
+                AI-powered insights help you optimize your study schedule and stay on track! Select a tool above to get started.
+              </p> 
+            </div> 
+          </div> 
+        </Card> 
       </div>
 
-      {/* AI Powered Insights Card */}
-      <Card className="p-4 bg-purple-50 border-purple-200 mt-4">
-        {/* ... Keep original Card content ... */}
-        <div className="flex items-start gap-3"> <Sparkles className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" /> <div> <p className="text-sm text-purple-900 mb-1"> AI-Powered Schedule Management </p> <p className="text-xs text-purple-700"> Our AI analyzes your teaching patterns... </p> </div> </div>
-      </Card>
-
-
-      {/* AI Response Dialog (For Analyze/Report/Suggest) */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        {/* ... Keep original Dialog content ... */}
-        <DialogContent className="sm:max-w-[600px]"> <DialogHeader> <DialogTitle className="flex items-center gap-2"> <Sparkles className="w-5 h-5 text-purple-600" /> {aiResponse?.title || 'AI Response'} </DialogTitle> <DialogDescription className="pt-4 text-base whitespace-pre-line"> {aiResponse?.content || 'Loading...'} </DialogDescription> </DialogHeader> {aiResponse?.suggestions && aiResponse.suggestions.length > 0 && ( <div className="space-y-3 pt-4 border-t border-gray-200 mt-4"> <h4 className="font-medium">Recommendations:</h4> <ul className="space-y-2"> {aiResponse.suggestions.map((suggestion, index) => ( <li key={index} className="flex items-start gap-2 text-sm text-gray-700"> <span className="text-purple-600 mt-1">•</span> <span>{suggestion}</span> </li> ))} </ul> </div> )} </DialogContent>
-      </Dialog>
+      {/* Right Column: Results */}
+      <div className="lg:col-span-2">
+        {aiResponse ? (
+          <Card className="h-full p-6 shadow-lg border-purple-100 bg-white/80 backdrop-blur-sm flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex justify-between items-start mb-6 pb-4 border-b border-gray-100">
+              <h3 className="text-2xl font-bold flex items-center gap-3 text-gray-800">
+                <div className="p-2 bg-purple-100 rounded-lg">
+                  <Sparkles className="w-6 h-6 text-purple-600" />
+                </div>
+                {aiResponse.title}
+              </h3>
+              <Button variant="ghost" size="icon" onClick={() => setAiResponse(null)} className="hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5 text-gray-500" />
+              </Button>
+            </div>
+            
+            <div className="flex-grow overflow-y-auto pr-2 custom-scrollbar max-h-[600px]">
+              <div className="prose prose-purple max-w-none">
+                <div className="whitespace-pre-line text-gray-700 leading-relaxed text-lg">
+                  {aiResponse.content}
+                </div>
+                
+                {/* Render suggestions only if they exist and the array is not empty */}
+                {aiResponse.suggestions && aiResponse.suggestions.length > 0 && (
+                  <div className="mt-8 bg-purple-50 rounded-xl p-6 border border-purple-100">
+                    <h4 className="font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Recommended Actions:
+                    </h4>
+                    <ul className="space-y-3">
+                      {aiResponse.suggestions.map((suggestion, index) => (
+                        <li key={index} className="flex items-start gap-3 text-gray-700 bg-white p-3 rounded-lg shadow-sm border border-purple-100/50"> 
+                          <span className="text-purple-600 mt-1 font-bold">•</span> 
+                          <span>{suggestion}</span> 
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <Card className="h-full min-h-[400px] flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 bg-gray-50/50">
+            <div className="text-center p-8 max-w-md">
+              <div className="bg-white p-4 rounded-full shadow-sm inline-block mb-4">
+                <Bot className="w-12 h-12 text-purple-300" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">Ready to Assist</h3>
+              <p className="text-gray-500">Select an AI tool from the left menu to generate insights, study plans, or get motivation.</p>
+            </div>
+          </Card>
+        )}
+      </div>
 
       {/* ============================================ */}
       {/* ✅ --- Render the Generate Schedule Dialog --- */}

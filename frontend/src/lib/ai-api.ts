@@ -20,9 +20,12 @@ const AI_ENDPOINTS = {
   
   // TA AI endpoints
   TA_ANALYZE_SCHEDULE: '/api/ta/analyze-schedule',
+  TA_PREPARATION_TIPS: '/api/ta/preparation-tips',
+  TA_TIME_MANAGEMENT: '/api/ta/time-management',
+  TA_CAREER_GUIDANCE: '/api/ta/career-guidance',
   
   // Generic AI endpoint (for motivation, etc.)
-  GENERATE_SUMMARY: '/api/generate-summary',
+  GENERATE_TEXT: '/api/generate-text',
 };
 
 // Response Interfaces
@@ -33,10 +36,10 @@ interface FeedbackResponse {
 }
 interface PlanResponse {
   success: boolean;
-  plan: string;
+  plan: string | any; // Allow plan to be an object (structured) or string
 }
-interface SummaryResponse {
-  summary: string;
+interface TextResponse {
+  text: string;
 }
 interface ScheduleResponse {
   success: boolean;
@@ -71,9 +74,10 @@ export async function getStudyFeedback(): Promise<FeedbackResponse> {
   return post<FeedbackResponse>(AI_ENDPOINTS.STUDENT_FEEDBACK, {}, token || undefined);
 }
 
-export async function generateStudyPlan(prompt: string): Promise<PlanResponse> {
+export async function generateStudyPlan(input: string | { goal: string; duration: string; topics?: string }): Promise<PlanResponse> {
   const token = getAuthToken();
-  return post<PlanResponse>(AI_ENDPOINTS.STUDENT_STUDY_PLAN, { prompt }, token || undefined);
+  const body = typeof input === 'string' ? { prompt: input } : input;
+  return post<PlanResponse>(AI_ENDPOINTS.STUDENT_STUDY_PLAN, body, token || undefined);
 }
 
 /**
@@ -116,18 +120,32 @@ export async function suggestTaAssignments(): Promise<SuggestionResponse> {
  * TA AI Features
  */
 
-export async function analyzeTASchedule(): Promise<AnalysisResponse> { // Assuming it returns AnalysisResponse
+export async function analyzeTASchedule(): Promise<AnalysisResponse> {
   const token = getAuthToken();
-  // Backend route expects no body, just token
   return post<AnalysisResponse>(AI_ENDPOINTS.TA_ANALYZE_SCHEDULE, {}, token || undefined);
+}
+
+export async function getTAPreparationTips(): Promise<AnalysisResponse> {
+  const token = getAuthToken();
+  return post<AnalysisResponse>(AI_ENDPOINTS.TA_PREPARATION_TIPS, {}, token || undefined);
+}
+
+export async function getTATimeManagement(): Promise<AnalysisResponse> {
+  const token = getAuthToken();
+  return post<AnalysisResponse>(AI_ENDPOINTS.TA_TIME_MANAGEMENT, {}, token || undefined);
+}
+
+export async function getTACareerGuidance(): Promise<AnalysisResponse> {
+  const token = getAuthToken();
+  return post<AnalysisResponse>(AI_ENDPOINTS.TA_CAREER_GUIDANCE, {}, token || undefined);
 }
 
 /**
  * Generic AI Features (All users)
  */
 
-export async function generateSummary(prompt: string): Promise<SummaryResponse> {
+export async function generateText(prompt: string): Promise<TextResponse> {
   // This route might not require auth, check server.js
   const token = getAuthToken(); // Send token if available, backend might not use it
-  return post<SummaryResponse>(AI_ENDPOINTS.GENERATE_SUMMARY, { prompt }, token || undefined);
+  return post<TextResponse>(AI_ENDPOINTS.GENERATE_TEXT, { prompt }, token || undefined);
 }

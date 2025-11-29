@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
-import StudentDashboard from './StudentDashboard';
-import FacultyDashboard from './FacultyDashboard';
-import TADashboard from './TADashboard';
+import { useState, useEffect, Suspense, lazy } from 'react';
+const StudentDashboard = lazy(() => import('./StudentDashboard'));
+const FacultyDashboard = lazy(() => import('./FacultyDashboard'));
+const TADashboard = lazy(() => import('./TADashboard'));
 import { Login } from './components/Login';
 import { SignUp } from './components/SignUp';
 import { LandingPage } from './components/LandingPage';
 import { login, signUp, logout, getCurrentUser, isAuthenticated } from './lib/auth';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { config } from './lib/config';
+import { ConnectionStatus } from './components/ConnectionStatus';
 
 type UserRole = 'student' | 'faculty' | 'ta';
 
@@ -24,6 +25,13 @@ export default function App() {
 
   // Check if user is already logged in
   useEffect(() => {
+    // Listen for auth:logout event
+    const handleAuthLogout = () => {
+      handleLogout();
+      toast.error("Session expired. Please login again.");
+    };
+    window.addEventListener('auth:logout', handleAuthLogout);
+
     if (config.useMockData) {
       // Mock data mode - use localStorage
       const savedSession = localStorage.getItem('currentSession');
@@ -47,6 +55,10 @@ export default function App() {
       }
     }
     setIsLoading(false);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout);
+    };
   }, []);
 
   const handleLogin = async (email: string, password: string) => {
@@ -137,18 +149,10 @@ export default function App() {
     }
   };
 
-  const handleLogout = async () => {
-    if (config.useMockData) {
-      // Mock data mode - clear localStorage
-      localStorage.removeItem('currentSession');
-    } else {
-      // Backend mode - call logout API
-      await logout();
-    }
-    
+  const handleLogout = () => {
     setUser(null);
-    setCurrentView('home');
-    toast.success('Logged out successfully');
+    setCurrentView('login');
+    localStorage.removeItem('currentSession');
   };
 
   if (isLoading) {
@@ -165,44 +169,78 @@ export default function App() {
   // Landing Page View
   if (currentView === 'home') {
     return (
-      <LandingPage
-        onNavigateToLogin={() => setCurrentView('login')}
-        onNavigateToSignup={() => setCurrentView('signup')}
-      />
+      <>
+        <LandingPage
+          onNavigateToLogin={() => setCurrentView('login')}
+          onNavigateToSignup={() => setCurrentView('signup')}
+        />
+        <ConnectionStatus />
+      </>
     );
   }
 
   // Login View
   if (currentView === 'login') {
     return (
-      <Login
-        onLogin={handleLogin}
-        onNavigateToSignup={() => setCurrentView('signup')}
-      />
+      <>
+        <Login
+          onLogin={handleLogin}
+          onNavigateToSignup={() => setCurrentView('signup')}
+        />
+        <ConnectionStatus />
+      </>
     );
   }
 
   // Sign Up View
   if (currentView === 'signup') {
     return (
-      <SignUp
-        onSignUp={handleSignUp}
-        onNavigateToLogin={() => setCurrentView('login')}
-      />
+      <>
+        <SignUp
+          onSignUp={handleSignUp}
+          onNavigateToLogin={() => setCurrentView('login')}
+        />
+        <ConnectionStatus />
+      </>
     );
   }
 
   // Dashboard View
   if (currentView === 'dashboard' && user) {
-    if (user.role === 'student') {
-      return <StudentDashboard onChangeRole={handleLogout} userName={user.username} />;
-    }
+    return (
+      <>
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading Dashboard...</p>
+            </div>
+          </div>
+        }>
+          {currentView === 'dashboard' && user?.role === 'student' && (
+            <StudentDashboard 
+              userName={user.username} 
+              onChangeRole={handleLogout} 
+            />
+          )}
 
-    if (user.role === 'faculty') {
-      return <FacultyDashboard onChangeRole={handleLogout} userName={user.username} />;
-    }
+          {currentView === 'dashboard' && user?.role === 'faculty' && (
+            <FacultyDashboard 
+              userName={user.username} 
+              onChangeRole={handleLogout} 
+            />
+          )}
 
-    return <TADashboard onChangeRole={handleLogout} userName={user.username} />;
+          {currentView === 'dashboard' && user?.role === 'ta' && (
+            <TADashboard 
+              userName={user.username} 
+              onChangeRole={handleLogout} 
+            />
+          )}
+        </Suspense>
+        <ConnectionStatus />
+      </>
+    );
   }
 
   return null;

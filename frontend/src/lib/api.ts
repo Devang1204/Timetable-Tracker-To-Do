@@ -55,6 +55,16 @@ const config: RequestInit = {
     const isJson = contentType?.includes('application/json');
 
     if (!response.ok) {
+      // Handle Authentication Errors
+      if (response.status === 401 || response.status === 403) {
+        // Clear invalid token
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        
+        // Dispatch event to notify App.tsx to logout
+        window.dispatchEvent(new Event('auth:logout'));
+      }
+
       const errorData = isJson ? await response.json() : { message: response.statusText };
       throw new Error(errorData.message || `HTTP Error: ${response.status}`);
     }

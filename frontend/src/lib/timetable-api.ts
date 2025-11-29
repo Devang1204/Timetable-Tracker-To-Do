@@ -117,10 +117,10 @@ export async function uploadTimetablePDF(file: File): Promise<{ success: boolean
  * Faculty Timetable APIs
  */
 
-// Faculty uses the same GET /api/timetable endpoint, backend filters by token
+// Faculty uses the faculty-specific endpoint to get self + TA schedules
 export async function getFacultyTimetable(): Promise<TimetableEntryFromBackend[]> {
   const token = getAuthToken();
-  return get<TimetableEntryFromBackend[]>(TIMETABLE_ENDPOINTS.BASE, token || undefined);
+  return get<TimetableEntryFromBackend[]>(TIMETABLE_ENDPOINTS.FACULTY_BASE, token || undefined);
 }
 
 // Faculty adds classes using POST /api/faculty/timetable

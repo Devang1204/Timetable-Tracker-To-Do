@@ -1,6 +1,7 @@
 // geminiService.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 require('dotenv').config();
+const crypto = require('crypto'); // Needed for computeStableHash
 
 // Ensure API key is loaded
 if (!process.env.GEMINI_API_KEY) {
@@ -46,6 +47,12 @@ async function generateText(prompt) {
   }
 }
 
+// Re-implement generateStudyFeedback using the robust generateText logic
+// This was missing in the user's snippet but is required by studentRoutes.js
+async function generateStudyFeedback(prompt) {
+    // Use the same logic as generateText, as it seems to be what the user trusts
+    return generateText(prompt);
+}
 
 // Student timetable parsing from text (Strict Prompt V3)
 async function generateTimetableFromText(extractedText) {
@@ -142,7 +149,6 @@ async function generateFacultyTimetable(constraints) {
 
   try {
     console.log("Sending STRICTER prompt V4 to Gemini for faculty schedule...");
-    console.log("Allowed subjects:", allowedSubjectsList);
     const result = await model.generateContent(prompt);
     const response = await result.response;
     if (!response || !response.text) { throw new Error('Gemini returned no response for faculty schedule.'); }
@@ -169,10 +175,30 @@ async function generateFacultyTimetable(constraints) {
   }
 }
 
+// Hash helper for caching (stable order)
+function computeStableHash(timetableRows) {
+  const normalized = (timetableRows || [])
+    .map(r => ({
+      subject: r.subject,
+      start_time: r.start_time,
+      end_time: r.end_time
+    }))
+    .sort((a, b) => {
+      const t1 = String(a.start_time || '');
+      const t2 = String(b.start_time || '');
+      return t1.localeCompare(t2);
+    })
+    .map(x => `${x.subject}|${x.start_time}|${x.end_time}`)
+    .join('||');
+  return crypto.createHash('sha1').update(normalized).digest('hex');
+}
+
 
 // Export all functions
 module.exports = {
   generateText,
   generateTimetableFromText,
-  generateFacultyTimetable
+  generateFacultyTimetable,
+  generateStudyFeedback,
+  computeStableHash
 };

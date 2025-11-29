@@ -188,7 +188,7 @@ export function TimetableView({
                     {/* Render the class block only if a class starts here */}
                     {classEntryStarting && (
                       <div
-                        className="absolute inset-0 rounded-md p-1 text-white overflow-hidden cursor-pointer flex flex-col justify-between group" // Used inset-0 and p-1 from previous step
+                        className="absolute inset-1 rounded-md p-2 text-white overflow-hidden cursor-pointer flex flex-col justify-between group"
                         style={{ backgroundColor: classEntryStarting.color || '#3b82f6' }}
                       >
                         {/* Content */}

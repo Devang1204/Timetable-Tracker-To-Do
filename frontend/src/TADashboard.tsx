@@ -6,6 +6,7 @@ import { TAOverview } from './components/TAOverview';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Button } from './components/ui/button';
 import { GraduationCap, LayoutDashboard, Calendar, Clock, Sparkles, LogOut, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 // --- Import API functions ---
@@ -89,6 +90,9 @@ const formatTAScheduleEntry = (entry: TimetableEntryFromBackend): TAScheduleEntr
 
 // --- Formatting Helper for Availability ---
 const dayNameToIndex: { [key: string]: number } = { 'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6 };
+// --- ADDED: Helper to convert index back to name ---
+const dayIndexToName: string[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
 const formatAvailabilitySlot = (entry: AvailabilitySlotFromBackend): AvailabilitySlot => {
     return {
         id: entry.id,
@@ -154,24 +158,33 @@ export default function TADashboard({ onChangeRole, userName }: TADashboardProps
 
   // --- Handlers ---
   // ============================================
-  // ✅ --- FIX: Transform camelCase to snake_case ---
+  // ✅ --- FIX: Transform day index to day STRING ---
   // ============================================
   // The 'slotData' object comes from the form with camelCase keys
-  const handleAddAvailability = async (slotData: { dayOfWeek: string; startTime: string; endTime: string; reason?: string }) => {
+  // and 'dayOfWeek' as a number (index 0-6)
+  const handleAddAvailability = async (slotData: { dayOfWeek: number; startTime: string; endTime: string; reason?: string }) => {
     console.log("handleAddAvailability received (camelCase):", slotData);
     if (config.useMockData) { /* ... */ return; }
 
-    // Transform keys to snake_case for the backend
+    // --- Convert day index back to string name ---
+    const dayString = dayIndexToName[slotData.dayOfWeek];
+    if (!dayString) {
+        console.error("Invalid day index received from form:", slotData.dayOfWeek);
+        toast.error("Invalid day selected.");
+        return;
+    }
+
+    // Transform keys AND day value for the backend
     const backendSlotData = {
-        day_of_week: slotData.dayOfWeek, // Transform
-        start_time: slotData.startTime, // Transform
-        end_time: slotData.endTime,   // Transform
+        day_of_week: dayString, // Send "Monday", "Tuesday", etc.
+        start_time: slotData.startTime,
+        end_time: slotData.endTime,
         reason: slotData.reason
     };
 
     try {
         console.log("Calling addAvailabilitySlot API with (snake_case):", backendSlotData);
-        // Validation (optional, backend also validates)
+        // Validation (backend also validates)
         if (!backendSlotData.day_of_week || !backendSlotData.start_time || !backendSlotData.end_time) {
             toast.error("Day, start time, and end time are required.");
             return;
@@ -213,25 +226,35 @@ export default function TADashboard({ onChangeRole, userName }: TADashboardProps
 
   // --- Render the dashboard UI ---
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-neutral-50 to-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+      <header className="bg-gradient-to-r from-teal-800 to-teal-900 border-b border-teal-700 sticky top-0 z-10 shadow-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="bg-green-600 rounded-lg p-2">
-                <GraduationCap className="w-6 h-6 text-white" />
-              </div>
+              <motion.div 
+                className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-lg p-2.5 shadow-lg border border-teal-500"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <GraduationCap className="w-6 h-6 text-teal-50" />
+              </motion.div>
               <div>
-                <h1>Teaching Assistant Dashboard</h1>
-                <p className="text-gray-600 text-sm">Welcome back, {userName}!</p>
+                <h1 className="text-teal-50" style={{ fontFamily: "'Lora', serif" }}>Teaching Assistant Dashboard</h1>
+                <p className="text-teal-200 text-sm" style={{ fontFamily: "'Open Sans', sans-serif" }}>Welcome back, {userName}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 hidden sm:inline">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </span>
-              <Button variant="outline" size="sm" onClick={onChangeRole} className="gap-2"> <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Logout</span> </Button>
+              <span className="text-sm text-teal-200 hidden sm:inline" style={{ fontFamily: "'Open Sans', sans-serif" }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onChangeRole}
+                className="gap-2 border-red-500 text-red-400 hover:bg-red-900/30 hover:border-red-400 hover:text-red-300 transition-all duration-300"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
             </div>
           </div>
         </div>
@@ -240,28 +263,76 @@ export default function TADashboard({ onChangeRole, userName }: TADashboardProps
       {/* Main Content with Tabs */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="overview" className="gap-2"> <LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Overview</span> </TabsTrigger>
-            <TabsTrigger value="schedule" className="gap-2"> <Calendar className="w-4 h-4" /> <span className="hidden sm:inline">Assigned Schedule</span> </TabsTrigger>
-            <TabsTrigger value="availability" className="gap-2"> <Clock className="w-4 h-4" /> <span className="hidden sm:inline">Availability</span> </TabsTrigger>
-            <TabsTrigger value="ai" className="gap-2"> <Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">AI Assistant</span> </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-white border border-stone-300 shadow-lg p-1.5">
+            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-teal-700 data-[state=active]:to-teal-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: 10 }} transition={{ type: "spring", stiffness: 400 }}>
+                <LayoutDashboard className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-700 data-[state=active]:to-cyan-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: -10 }} transition={{ type: "spring", stiffness: 400 }}>
+                <Calendar className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Assigned Schedule</span>
+            </TabsTrigger>
+            <TabsTrigger value="availability" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-700 data-[state=active]:to-amber-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+              <motion.div 
+                whileHover={{ scale: 1.2 }}
+                animate={{ rotate: [0, 360] }}
+                transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+              >
+                <Clock className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Availability</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-700 data-[state=active]:to-violet-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Open Sans', sans-serif" }}>
+              <motion.div 
+                whileHover={{ scale: 1.2 }} 
+                animate={{ rotate: [0, 3, -3, 0] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">AI Assistant</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* Pass REAL data and handlers */}
           <TabsContent value="overview" className="mt-0">
-            <TAOverview schedule={schedule} availability={availability} />
+            <TAOverview
+              schedule={schedule}
+              availability={availability}
+            />
           </TabsContent>
 
           <TabsContent value="schedule" className="mt-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-6"> <Calendar className="w-5 h-5 text-blue-600" /> <h2>Assigned Schedule</h2> </div>
+            <div className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 rounded-lg shadow-xl border-2 border-cyan-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className="bg-gradient-to-br from-cyan-700 to-cyan-800 p-2 rounded-lg shadow-md"
+                >
+                  <Calendar className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-cyan-900" style={{ fontFamily: "'Lora', serif" }}>Assigned Schedule</h2>
+              </div>
               <TAScheduleView schedule={schedule} />
             </div>
           </TabsContent>
 
           <TabsContent value="availability" className="mt-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-6"> <Clock className="w-5 h-5 text-green-600" /> <h2>Availability Management</h2> </div>
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-lg shadow-xl border-2 border-amber-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  animate={{ rotate: [0, 360] }}
+                  transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
+                  className="bg-gradient-to-br from-amber-700 to-amber-800 p-2 rounded-lg shadow-md"
+                >
+                  <Clock className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-amber-900" style={{ fontFamily: "'Lora', serif" }}>Availability Management</h2>
+              </div>
               <TAAvailability
                 schedule={schedule}
                 availability={availability}
@@ -272,8 +343,24 @@ export default function TADashboard({ onChangeRole, userName }: TADashboardProps
           </TabsContent>
 
           <TabsContent value="ai" className="mt-0">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-2 mb-6"> <Sparkles className="w-5 h-5 text-purple-600" /> <h2>AI Assistant</h2> </div>
+            <div className="bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-lg shadow-xl border-2 border-violet-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 3, -3, 0],
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 3,
+                    ease: "easeInOut"
+                  }}
+                  className="bg-gradient-to-br from-violet-700 to-violet-800 p-2 rounded-lg shadow-md"
+                >
+                  <Sparkles className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-violet-900" style={{ fontFamily: "'Lora', serif" }}>AI Assistant</h2>
+              </div>
               <TAAIFeatures schedule={schedule} availability={availability} />
             </div>
           </TabsContent>

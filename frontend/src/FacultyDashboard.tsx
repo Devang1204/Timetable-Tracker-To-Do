@@ -6,6 +6,7 @@ import { FacultyOverview } from './components/FacultyOverview';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { Button } from './components/ui/button';
 import { Users, LayoutDashboard, Calendar, Sparkles, LogOut, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
 // --- Import API functions ---
@@ -276,76 +277,141 @@ export default function FacultyDashboard({ onChangeRole, userName }: FacultyDash
 
   // --- Render the dashboard UI ---
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
-         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-             <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                     <div className="bg-blue-600 rounded-lg p-2">
-                         <Users className="w-6 h-6 text-white" /> {/* Faculty Icon */}
-                     </div>
-                     <div>
-                         <h1>Faculty Dashboard</h1>
-                         <p className="text-gray-600 text-sm">Welcome back, {userName}!</p>
-                     </div>
-                 </div>
-                 <div className="flex items-center gap-4">
-                     {/* ============================================ */}
-                     {/* ✅ --- Use Dynamic Date --- */}
-                     {/* ============================================ */}
-                     <span className="text-sm text-gray-600 hidden sm:inline">
-                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                     </span>
-                     {/* ============================================ */}
-                     <Button variant="outline" size="sm" onClick={onChangeRole} className="gap-2"> <LogOut className="w-4 h-4" /> <span className="hidden sm:inline">Logout</span> </Button>
-                 </div>
-             </div>
-         </div>
+      <header className="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-slate-700 sticky top-0 z-10 shadow-xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <motion.div 
+                className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-lg p-2.5 shadow-lg border border-slate-500"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <Users className="w-6 h-6 text-slate-100" />
+              </motion.div>
+              <div>
+                <h1 className="text-slate-100" style={{ fontFamily: "'Merriweather', serif" }}>Faculty Dashboard</h1>
+                <p className="text-slate-300 text-sm" style={{ fontFamily: "'Roboto', sans-serif" }}>Welcome back, {userName}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-slate-300 hidden sm:inline" style={{ fontFamily: "'Roboto', sans-serif" }}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onChangeRole}
+                className="gap-2 border-red-500 text-red-400 hover:bg-red-900/30 hover:border-red-400 hover:text-red-300 transition-all duration-300"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="hidden sm:inline">Logout</span>
+              </Button>
+            </div>
+          </div>
+        </div>
       </header>
 
       {/* Main Content with Tabs */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-             <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="w-4 h-4" /> <span className="hidden sm:inline">Overview</span></TabsTrigger>
-             <TabsTrigger value="timetable" className="gap-2"><Calendar className="w-4 h-4" /> <span className="hidden sm:inline">Weekly Timetable</span></TabsTrigger>
-             <TabsTrigger value="ta" className="gap-2"><Users className="w-4 h-4" /> <span className="hidden sm:inline">TA Management</span></TabsTrigger>
-             <TabsTrigger value="ai" className="gap-2"><Sparkles className="w-4 h-4" /> <span className="hidden sm:inline">AI Assistant</span></TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 mb-6 bg-white border border-slate-300 shadow-lg p-1.5">
+            <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-700 data-[state=active]:to-slate-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Roboto', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: 10 }} transition={{ type: "spring", stiffness: 400 }}>
+                <LayoutDashboard className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Overview</span>
+            </TabsTrigger>
+            <TabsTrigger value="timetable" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-700 data-[state=active]:to-blue-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Roboto', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2, rotate: -10 }} transition={{ type: "spring", stiffness: 400 }}>
+                <Calendar className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">Weekly Timetable</span>
+            </TabsTrigger>
+            <TabsTrigger value="ta" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-700 data-[state=active]:to-emerald-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Roboto', sans-serif" }}>
+              <motion.div whileHover={{ scale: 1.2 }} transition={{ type: "spring", stiffness: 400 }}>
+                <Users className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">TA Management</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-700 data-[state=active]:to-indigo-800 data-[state=active]:text-white transition-all duration-300" style={{ fontFamily: "'Roboto', sans-serif" }}>
+              <motion.div 
+                whileHover={{ scale: 1.2 }} 
+                animate={{ rotate: [0, 3, -3, 0] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-4 h-4" />
+              </motion.div>
+              <span className="hidden sm:inline">AI Assistant</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-0">
-             {/* ============================================ */}
-             {/* ✅ --- Pass userName to Overview --- */}
-             {/* ============================================ */}
-             <FacultyOverview timetable={timetable} tas={tas} />
-             {/* Note: Overview doesn't *need* userName based on previous code */}
-          </TabsContent>
-          <TabsContent value="timetable" className="mt-0">
-             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-6"> <Calendar className="w-5 h-5 text-blue-600" /> <h2>Weekly Timetable</h2> </div>
-                {/* ============================================ */}
-                {/* ✅ --- Pass userName to TimetableView --- */}
-                {/* ============================================ */}
-                <FacultyTimetableView timetable={timetable} tas={tas} onAddClass={handleAddClass} onUpdateClass={handleUpdateClass} onDeleteClass={handleDeleteClass} userName={userName} />
-             </div>
-          </TabsContent>
-          <TabsContent value="ta" className="mt-0">
-             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-6"> <Users className="w-5 h-5 text-green-600" /> <h2>TA Management</h2> </div>
-                <TAManagement tas={tas} timetable={timetable} onAddTA={handleAddTA} onRemoveTA={handleRemoveTA} onAssignTA={handleAssignTA} />
-             </div>
-          </TabsContent>
-          <TabsContent value="ai" className="mt-0">
-             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center gap-2 mb-6"> <Sparkles className="w-5 h-5 text-purple-600" /> <h2>AI Scheduling Assistant</h2> </div>
-                 {/* ============================================ */}
-                 {/* ✅ --- Pass userName to AIFeatures --- */}
-                 {/* ============================================ */}
-                <FacultyAIFeatures timetable={timetable} tas={tas} facultyUserName={userName}/>
-             </div>
+            <FacultyOverview
+              timetable={timetable}
+              tas={tas}
+            />
           </TabsContent>
 
+          <TabsContent value="timetable" className="mt-0">
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg shadow-xl border-2 border-blue-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ rotate: 360 }}
+                  transition={{ duration: 0.6 }}
+                  className="bg-gradient-to-br from-blue-700 to-blue-800 p-2 rounded-lg shadow-md"
+                >
+                  <Calendar className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-blue-900" style={{ fontFamily: "'Merriweather', serif" }}>Weekly Timetable</h2>
+              </div>
+              <FacultyTimetableView
+                timetable={timetable}
+                tas={tas}
+                onAddClass={handleAddClass}
+                onUpdateClass={handleUpdateClass}
+                onDeleteClass={handleDeleteClass}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ta" className="mt-0">
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-lg shadow-xl border-2 border-emerald-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ scale: 1.2 }}
+                  transition={{ type: "spring", stiffness: 400 }}
+                  className="bg-gradient-to-br from-emerald-700 to-emerald-800 p-2 rounded-lg shadow-md"
+                >
+                  <Users className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-emerald-900" style={{ fontFamily: "'Merriweather', serif" }}>TA Management</h2>
+              </div>
+              <TAManagement
+                tas={tas}
+                timetable={timetable}
+                onAddTA={handleAddTA}
+                onRemoveTA={handleRemoveTA}
+                onAssignTA={handleAssignTA}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-0">
+            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-lg shadow-xl border-2 border-indigo-200 p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <motion.div
+                  whileHover={{ scale: 1.2 }}
+                  animate={{ rotate: [0, 3, -3, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                  className="bg-gradient-to-br from-indigo-700 to-indigo-800 p-2 rounded-lg shadow-md"
+                >
+                  <Sparkles className="w-5 h-5 text-white" />
+                </motion.div>
+                <h2 className="text-indigo-900" style={{ fontFamily: "'Merriweather', serif" }}>AI Assistant</h2>
+              </div>
+              <FacultyAIFeatures timetable={timetable} tas={tas} facultyUserName={userName} />
+            </div>
+          </TabsContent>
         </Tabs>
       </main>
     </div>
